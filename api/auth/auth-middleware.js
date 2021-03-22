@@ -52,6 +52,7 @@ async function checkUsernameExists(req, res, next) {
     if(expectedUser === []) {
       res.status(401).json({ message: 'Invalid credentials' })
     } else {
+      req.verifiedUser = expectedUser;
       next();
     }
   } catch (err) { next(err) }
