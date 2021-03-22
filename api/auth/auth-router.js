@@ -1,7 +1,9 @@
 // Require `checkUsernameFree`, `checkUsernameExists` and `checkPasswordLength`
 // middleware functions from `auth-middleware.js`. You will need them here!
-
-
+const router = require('express').Router();
+const { checkUsernameFree, checkUsernameExists, checkPasswordLength } = require('./auth-middleware');
+const bcrypt = require('bcryptjs');
+const Users = require('../users/users-model');
 /**
   1 [POST] /api/auth/register { "username": "sue", "password": "1234" }
 
@@ -25,6 +27,18 @@
   }
  */
 
+router.post('/register', checkUsernameFree, checkPasswordLength, async (req, res, next) => {
+  const { username, password } = req.body;
+  const hash = bcrypt.hashSync(password, 10) // 2^10 hashing
+  const userForDB = { username, password: hash}
+
+  try {
+    const newUser = await Users.add(userForDB)
+    res.json(newUser);
+  } catch(err) { next(err) }
+  
+})
+
 
 /**
   2 [POST] /api/auth/login { "username": "sue", "password": "1234" }
@@ -41,6 +55,34 @@
     "message": "Invalid credentials"
   }
  */
+
+router.post('/login', checkUsernameExists, async (req, res, next) => {
+  const { password } = req.body;
+  console.log(req.verifiedUser);
+  if(req.verifiedUser && bcrypt.compareSync(password, req.verifiedUser.password)) { 
+      req.session.user = req.verifiedUser; // save session/set cookie on client
+      res.json({ message: `Welcome ${req.verifiedUser.username}!` });
+  } else { 
+      res.status(401).json({ message: 'Invalid credentials' })
+  }
+  next();
+})
+
+// router.post('/login', (req, res, next) => {
+//   const { username, password } = req.body;
+//   // ? is that username even in the DB
+//   Users.findBy({ username })
+//       .first()
+//       .then(user => {
+//           if(user && bcrypt.compareSync(password, user.password)) { // second argument is the hashed password
+//               req.session.user = user; // save session and set cookie on client
+//               res.json('Welcome sue!');
+//           } else { 
+//               res.status(401).json('Invalid credentials')
+//           }
+//       })
+//       .catch(next)
+// })
 
 
 /**
@@ -59,5 +101,18 @@
   }
  */
 
+router.get('/logout', (req, res, next) => { //eslint-disable-line
+  if(req.session && req.session.user) {
+    req.session.destroy(err => {
+      if(err) {
+        res.json({ message: "no session"})
+      } else {
+        res.json({ message: "logged out"})
+      }
+    })
+  } else res.json({ message: "no session"});
+})
+
  
 // Don't forget to add the router to the `exports` object so it can be required in other modules
+module.exports = router;
