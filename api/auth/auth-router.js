@@ -58,14 +58,31 @@ router.post('/register', checkUsernameFree, checkPasswordLength, async (req, res
 
 router.post('/login', checkUsernameExists, async (req, res, next) => {
   const { password } = req.body;
+  console.log(req.verifiedUser);
   if(req.verifiedUser && bcrypt.compareSync(password, req.verifiedUser.password)) { 
       req.session.user = req.verifiedUser; // save session/set cookie on client
-      res.json('Welcome sue!');
+      res.json({ message: `Welcome ${req.verifiedUser.username}!` });
   } else { 
-      res.status(401).json('Invalid credentials')
+      res.status(401).json({ message: 'Invalid credentials' })
   }
   next();
 })
+
+// router.post('/login', (req, res, next) => {
+//   const { username, password } = req.body;
+//   // ? is that username even in the DB
+//   Users.findBy({ username })
+//       .first()
+//       .then(user => {
+//           if(user && bcrypt.compareSync(password, user.password)) { // second argument is the hashed password
+//               req.session.user = user; // save session and set cookie on client
+//               res.json('Welcome sue!');
+//           } else { 
+//               res.status(401).json('Invalid credentials')
+//           }
+//       })
+//       .catch(next)
+// })
 
 
 /**
@@ -84,7 +101,7 @@ router.post('/login', checkUsernameExists, async (req, res, next) => {
   }
  */
 
-router.get('/logout', (req, res, next) => {
+router.get('/logout', (req, res, next) => { //eslint-disable-line
   if(req.session && req.session.user) {
     req.session.destroy(err => {
       if(err) {
@@ -93,7 +110,7 @@ router.get('/logout', (req, res, next) => {
         res.json({ message: "logged out"})
       }
     })
-  }
+  } else res.json({ message: "no session"});
 })
 
  
